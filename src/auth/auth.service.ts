@@ -17,7 +17,7 @@ export class AuthService {
 
       // Create new user
       const data = await this.supabase.from('users').insert([{ email, password }]);
-      return data;
+      return { message: 'Signup successful', data };
     } catch (error) {
       throw new Error('Signup failed: ' + error.message);
     }
@@ -35,7 +35,7 @@ export class AuthService {
 
       // Return user
       const user = await this.supabase.from('users').select().eq('email', email).eq('password', password).single();
-      return user;
+      return { message: 'Signin successful', user };
     } catch (error) {
       throw new Error('Signin failed: ' + error.message);
     }
