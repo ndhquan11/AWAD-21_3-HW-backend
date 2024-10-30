@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -15,8 +16,11 @@ export class AuthService {
         throw new Error('Email already exists');
       }
 
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       // Create new user
-      const data = await this.supabase.from('users').insert([{ email, password }]);
+      const data = await this.supabase.from('users').insert([{ email, password: hashedPassword }]);
       return { message: 'Signup successful', data };
     } catch (error) {
       throw new Error('Signup failed: ' + error.message);
@@ -27,15 +31,19 @@ export class AuthService {
     try {
       const { email, password } = signinDto;
 
-      // Check if email and password match
-      const { data: existingUser} = await this.supabase.from('users').select().eq('email', email).eq('password', password).single();
+      // Retrieve user
+      const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
       if (!existingUser) {
         throw new Error('Invalid email or password');
       }
 
-      // Return user
-      const user = await this.supabase.from('users').select().eq('email', email).eq('password', password).single();
-      return { message: 'Signin successful', user };
+      // Compare password
+      const isMatch = await bcrypt.compare(password, existingUser.password);
+      if (!isMatch) {
+        throw new Error('Invalid email or password');
+      }
+
+      return { message: 'Signin successful', user: existingUser };
     } catch (error) {
       throw new Error('Signin failed: ' + error.message);
     }
