@@ -8,26 +8,36 @@ export class AuthService {
   async signup(signupDto: SignupDto) {
     try {
       const { email, password } = signupDto;
-      const { data, error } = await this.supabase.from('users').insert([{ email, password }]);
-      if (error) {
-        throw new Error('Signup failed: ' + error.message);
+
+      // Check if email already exists
+      const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
+      if (existingUser) {
+        throw new Error('Email already exists');
       }
+
+      // Create new user
+      const data = await this.supabase.from('users').insert([{ email, password }]);
       return data;
     } catch (error) {
-      throw new Error( error.message);
+      throw new Error('Signup failed: ' + error.message);
     }
   }
 
   async signin(signinDto: SignupDto) {
     try {
       const { email, password } = signinDto;
-      const { user, error } = await this.supabase.from('users').select().eq('email', email).eq('password', password).single();
-      if (error) {
-        throw new Error('Signin failed: ' + error.message);
+
+      // Check if email and password match
+      const { data: existingUser} = await this.supabase.from('users').select().eq('email', email).eq('password', password).single();
+      if (!existingUser) {
+        throw new Error('Invalid email or password');
       }
+
+      // Return user
+      const user = await this.supabase.from('users').select().eq('email', email).eq('password', password).single();
       return user;
     } catch (error) {
-      throw new Error(error.message);
+      throw new Error('Signin failed: ' + error.message);
     }
   }
 }
