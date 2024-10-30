@@ -1,4 +1,4 @@
-export class CreateUserDto {
+export class SignupDto {
   readonly email: string;
   readonly password: string;
 }
