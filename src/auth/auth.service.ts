@@ -34,13 +34,13 @@ export class AuthService {
       // Retrieve user
       const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
       if (!existingUser) {
-        throw new Error('Invalid email or password');
+        throw new Error('Account does not exist');
       }
 
       // Compare password
       const isMatch = await bcrypt.compare(password, existingUser.password);
       if (!isMatch) {
-        throw new Error('Invalid email or password');
+        throw new Error('Invalid password');
       }
 
       return { message: 'Signin successful', user: existingUser };
