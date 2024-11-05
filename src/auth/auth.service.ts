@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -10,20 +10,40 @@ export class AuthService {
     try {
       const { email, password } = registerDto;
 
-      // Check if email already exists
-      const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
+      const { data: existingUser } = await this.supabase
+        .from('users')
+        .select()
+        .eq('email', email)
+        .single();
+
       if (existingUser) {
-        throw new Error('Email already exists');
+        throw new HttpException(
+          'Email already exists',
+          HttpStatus.CONFLICT
+        );
       }
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
+      const { data, error } = await this.supabase
+        .from('users')
+        .insert([{ email, password: hashedPassword }]);
 
-      // Create new user
-      const data = await this.supabase.from('users').insert([{ email, password: hashedPassword }]);
-      return { message: 'Register successful', data };
+      if (error) {
+        throw new HttpException(
+          'Registration failed',
+          HttpStatus.INTERNAL_SERVER_ERROR
+        );
+      }
+
+      return { message: 'Registration successful', user: { email } };
     } catch (error) {
-      throw new Error('Register failed: ' + error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Registration failed',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
 
@@ -31,21 +51,42 @@ export class AuthService {
     try {
       const { email, password } = loginDto;
 
-      // Retrieve user
-      const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
-      if (!existingUser) {
-        throw new Error('Account does not exist');
+      const { data: user, error } = await this.supabase
+        .from('users')
+        .select()
+        .eq('email', email)
+        .single();
+
+      if (!user) {
+        throw new HttpException(
+          'Account does not exist',
+          HttpStatus.NOT_FOUND
+        );
       }
 
-      // Compare password
-      const isMatch = await bcrypt.compare(password, existingUser.password);
+      const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
-        throw new Error('Invalid password');
+        throw new HttpException(
+          'Incorrect password',
+          HttpStatus.UNAUTHORIZED
+        );
       }
 
-      return { message: 'Login successful', user: existingUser };
+      return { 
+        message: 'Login successful',
+        user: { 
+          email: user.email,
+          id: user.id 
+        }
+      };
     } catch (error) {
-      throw new Error('Login failed: ' + error.message);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(
+        error.message || 'Login failed',
+        HttpStatus.BAD_REQUEST
+      );
     }
   }
 }
