@@ -1,14 +1,14 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { SignupDto } from './dto/signup.dto';
+import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
   constructor(@Inject('SUPABASE_CLIENT') private readonly supabase) { }
 
-  async signup(signupDto: SignupDto) {
+  async register(registerDto: RegisterDto) {
     try {
-      const { email, password } = signupDto;
+      const { email, password } = registerDto;
 
       // Check if email already exists
       const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
@@ -21,15 +21,15 @@ export class AuthService {
 
       // Create new user
       const data = await this.supabase.from('users').insert([{ email, password: hashedPassword }]);
-      return { message: 'Signup successful', data };
+      return { message: 'Register successful', data };
     } catch (error) {
-      throw new Error('Signup failed: ' + error.message);
+      throw new Error('Register failed: ' + error.message);
     }
   }
 
-  async signin(signinDto: SignupDto) {
+  async login(loginDto: RegisterDto) {
     try {
-      const { email, password } = signinDto;
+      const { email, password } = loginDto;
 
       // Retrieve user
       const { data: existingUser } = await this.supabase.from('users').select().eq('email', email).single();
@@ -43,9 +43,9 @@ export class AuthService {
         throw new Error('Invalid password');
       }
 
-      return { message: 'Signin successful', user: existingUser };
+      return { message: 'Login successful', user: existingUser };
     } catch (error) {
-      throw new Error('Signin failed: ' + error.message);
+      throw new Error('Login failed: ' + error.message);
     }
   }
 }
