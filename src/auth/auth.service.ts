@@ -1,10 +1,22 @@
 import { Injectable, Inject, HttpException, HttpStatus } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  constructor(@Inject('SUPABASE_CLIENT') private readonly supabase) { }
+  constructor(
+    @Inject('SUPABASE_CLIENT') private readonly supabase,
+    private jwtService: JwtService
+  ) {}
+
+  private generateToken(user: any) {
+    const payload = { 
+      sub: user.id,
+      email: user.email 
+    };
+    return this.jwtService.sign(payload);
+  }
 
   async register(registerDto: RegisterDto) {
     try {
@@ -72,12 +84,15 @@ export class AuthService {
         );
       }
 
+      const token = this.generateToken(user);
+
       return { 
         message: 'Login successful',
         user: { 
-          email: user.email,
-          id: user.id 
-        }
+          id: user.id,
+          email: user.email
+        },
+        token
       };
     } catch (error) {
       if (error instanceof HttpException) {
